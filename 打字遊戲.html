@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>打字遊戲</title>
+    <style>
+        @font-face {
+            font-family: '華康童童體'; /* 字體名稱 */
+            src: url('fonts/華康童童體.ttf') format('truetype'); /* 字體檔案路徑 */
+        }
+        body {
+            font-family: '華康童童體', Arial, sans-serif;
+            font-weight: bold; /* 全局字體加粗 */
+            background-color: #f0f8ff;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: auto; 
+            min-height: 100vh; /* 確保最小高度 */
+            margin: 0;
+            padding: 20px; /* 添加 padding 確保內容不被遮擋 */
+            box-sizing: border-box; /* 包含 padding 和 border 在內 */
+        }
+
+        h2 {
+            font-size: 48px;
+            color: #ff4500;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px #aaa;
+        }
+
+        .word {
+            font-size: 32px;
+            margin-bottom: 20px;
+            font-family: 'Arial', Arial, sans-serif;
+            user-select: none; /* 禁用文本選擇 */
+            -webkit-user-select: none; /* 禁用文本選擇 - WebKit */
+            -moz-user-select: none; /* 禁用文本選擇 - Firefox */
+            -ms-user-select: none; /* 禁用文本選擇 - Internet Explorer */
+        }
+
+        .input-area {
+            margin-bottom: 48px;
+        }
+
+        input[type="text"] {
+            padding: 10px;
+            font-size: 18px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            width: 500px; /* 調整寬度 */
+        }
+
+        .stats {
+            margin-top: 20px;
+            font-size: 50px;
+            color: #ff4500;
+        }
+
+        button {
+            padding: 20px 30px;
+            font-size: 32px;
+            background-color: #4682b4;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-family: '華康童童體', Arial, sans-serif;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background-color: #ff6347;
+        }
+
+        .back-button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4682b4;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.3s ease;
+            font-family: '華康童童體', Arial, sans-serif;
+            font-weight: bold;
+        }
+
+        .back-button:hover {
+            background-color: #ff6347;
+        }
+        #gameInstructions {
+            font-size: 32px;
+            color: #666;
+            margin-bottom: 20px;
+            text-align: center;
+            line-height: 1.5;
+            max-width: 80%;
+        }
+        .difficulty-select {
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        select {
+            padding: 20px;
+            font-size: 36px;
+            border-radius: 10px;
+            border: 1px solid #ccc;
+            font-family: '華康童童體', Arial, sans-serif;
+            font-weight: bold;
+        }
+
+        footer {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #888;
+        }
+
+        footer a {
+            color: #4682b4;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <h2>打字遊戲</h2>
+    <p id="gameInstructions">遊戲說明：在規定時間內，請盡量輸入顯示的句子來獲得高分。按下 "Enter" 鍵來提交你的答案。</p>
+    <p id="gameInstructions">＊困難題目有中文有英文，請以最快的速度進行切換＊</p>
+    <div class="word" id="word">準備開始...</div>
+    <div class="input-area">
+        <input type="text" id="inputField" placeholder="開始輸入..." disabled>
+    </div>
+        <div class="difficulty-select">
+            <label for="difficulty">選擇難度:</label>
+            <select id="difficulty">
+                <option value="easy">容易</option>
+                <option value="normal" selected>普通</option>
+                <option value="hard">困難</option>
+            </select>
+        </div>
+
+    <button onclick="startGame()">開始遊戲</button>
+
+    <div class="stats">
+        <p id="score">得分: 0</p>
+        <p id="time">剩餘時間: 300秒</p>
+    </div>
+
+    <button class="back-button" onclick="goBack()">回到上一頁</button>
+
+    <script>
+        const easyWords = [
+            "貓", "狗", "魚", "鳥", "花", "樹", "山", "河", "月", "星",
+            "日", "風", "火", "水", "木", "金", "土", "電", "雪", "雨",
+            "春風", "夏雨", "秋葉", "冬雪", "早晨", "中午", "傍晚", "夜晚", 
+            "森林", "沙漠", "海洋", "湖泊", "河流", "山脈", "天空", "草原", 
+            "公園", "街道", "城市", "鄉村", "完美", "地", "電", "醫生", "郵差",
+            "地毯", "店家", "周圍", "鄰里", "自強", "影響", "手機", "螺絲", "水壺",
+            "嬰兒", "空氣", "壓力", "設備", "讀書", "保溫", "阻擋", "生病", "牙膏",
+            "釋放", "同學", "國家", "電腦", "相機", "膠帶", "紙箱", "躊躇", "高興"
+        ];
+
+        const normalWords = [
+            "重蹈覆轍", "煙雨任平生", "一鳴驚人", "清明上河圖", "分崩離析", "優勝劣敗", "天涯若比鄰", "鈴木一郎", 
+            "河濱公園", "撒哈拉沙漠", "摩西分海", "山本五十六", "今晚打老虎", "面目可憎", "三日不讀書", "青青子衿", 
+            "悠悠我心", "高速公路", "血染夕陽紅", "卿卿我我", "可口可樂", "無中生有", "青面獠牙", "三人成虎", "五顏六色",
+            "溯游從之", "蒹葭蒼蒼", "白露為霜", "汽車駕駛人", "天氣真好", "高山流水", "我見猶憐", "厚德載物", "自強不息",
+            "魚水之歡", "倚天屠龍記", "金庸群俠傳", "天龍八部", "神鵰俠侶", "心平氣和", "繼續加油", "快結束了", "衝高分數",
+            "你可以的", "屢戰屢敗", "屢敗屢戰", "革命十一次", "電話號碼", "明天再來", "明天過後", "囫圇吞棗", "苦其心志", "勞其筋骨",
+            "餓其體膚", "空乏其身", "動心忍性", "管仲樂易", "三民主義", "幾度夕陽紅", "吾爾開希", "福爾摩沙", "青山綠水",
+        ];
+        const hardWords = ["天將降大任於是人也", "山不在高有仙則名", "忽有龐然大物拔山倒樹而來，蓋一癩蛤蟆也", 
+            "一日為師終生為父", "天下只有媽媽好，有媽的孩子像個寶", "先打紅中再打一筒卡三不要再去四條", 
+            "如果你是一隻火鳥，我一定是那火苗", "你名義老爸正以時速兩百公里開車", "從南天門殺到蓬萊東路，一眼都沒眨過", 
+            "你說你想要逃偏偏注定要落腳", "知己知彼百戰不殆", "良辰美景奈何天", 
+            "人生若只如初見", "海內存知己天涯若比鄰", "天涯何處無芳草", 
+            "待到山花爛漫時，她在叢中笑", "為伊消得人憔悴", "十年生死兩茫茫", 
+            "青山依舊在幾度夕陽紅", "莫愁前路無知己", "桃李不言下自成蹊", 
+            "青青子衿悠悠我心", "山川異域風月同天", "海上生明月天涯共此時", 
+            "長風破浪會有時直掛雲帆濟滄海", "曾經滄海難為水", "好雨知時節當春乃發生", 
+            "何以解憂唯有杜康", "春風得意馬蹄疾一日看盡長安花", "人生自古誰無死", 
+            "生當作人傑死亦為鬼雄", "千里鵝毛送春風", "紅杏枝頭春意鬧", 
+            "一騎紅塵妃子笑無人知是荔枝來", "月上柳梢頭人約黃昏後", "小樓昨夜又東風故國不堪回首月明中", 
+            "恨不相逢未嫁時", "月滿西樓", "一往情深深幾許深山夕照深秋雨", 
+            "今夜月明人盡望不知秋思落誰家", "道阻且長行則將至", "此生只為重逢故人", 
+            "明月幾時有把酒問青天", "青梅竹馬兩小無猜", "誰道滄桑", 
+            "大道無形", "橫看成嶺側成峰", "一蓑煙雨任平生", 
+            "揚帆起航乘風破浪", "青山不改綠水長流", "山水一程風雪一更", 
+            "一見如故再見傾心", "小時不識月呼作白玉盤", "可憐無定河邊骨猶是春閨夢裏人", 
+            "曾經滄海難為水除卻巫山不是雲", "天若有情天亦老", "人間自是有情癡", 
+            "曾幾何時月如鉤"
+            , "The quick brown fox jumps over the lazy dog", "A journey of a thousand miles begins with a single step", 
+            "To be or not to be that is the question", "All that glitters is not gold", "Actions speak louder than words", 
+            "Better late than never", "A picture is worth a thousand words", "Curiosity killed the cat", 
+            "Do unto others as you would have them do unto you", "Every cloud has a silver lining", 
+            "Fortune favors the brave", "Honesty is the best policy", "Knowledge is power", 
+            "Laughter is the best medicine", "Necessity is the mother of invention", "No pain no gain", 
+            "Practice makes perfect", "The early bird catches the worm", "Time and tide wait for no man", 
+            "Where there is a will there is a way"];
+        let currentWord = "";
+        let score = 0;
+        let time = 300;
+        let isPlaying = false;
+        let interval;
+
+        let currentWordList = [];
+
+        function startGame() {
+            clearInterval(interval); // 清除之前的計時器
+            score = 0;
+
+                // 根據選擇的難度來設置題目清單
+                const difficulty = document.getElementById('difficulty').value;
+                if (difficulty === 'easy') {
+                    currentWordList = easyWords; // 容易級別題目
+                } else if (difficulty === 'normal') {
+                    currentWordList = normalWords; // 普通級別題目
+                } else if (difficulty === 'hard') {
+                    currentWordList = hardWords; // 困難級別題目
+                }
+            time = 300;
+            isPlaying = true;
+            document.getElementById('inputField').disabled = false;
+            document.getElementById('inputField').value = '';
+            document.getElementById('inputField').focus();
+            document.getElementById('score').textContent = `得分: ${score}`;
+            document.getElementById('time').textContent = `剩餘時間: ${time}秒`;
+            generateWord();
+            interval = setInterval(updateTime, 1000);
+        }
+
+        function generateWord() {
+            currentWord = currentWordList[Math.floor(Math.random() * currentWordList.length)];
+            document.getElementById('word').textContent = currentWord;
+            document.getElementById('inputField').value = ''; // 確保每次生成新單詞時清空輸入框
+        }
+
+
+        document.getElementById('inputField').addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                const input = document.getElementById('inputField').value;
+                if (input === currentWord) {
+                    score++;
+                    document.getElementById('score').textContent = `得分: ${score}`;
+                    generateWord();
+                }
+            }
+        });
+
+        function updateTime() {
+            time--;
+            document.getElementById('time').textContent = `剩餘時間: ${time}秒`;
+            if (time === 0) {
+                clearInterval(interval);
+                endGame();
+            }
+        }
+
+        function endGame() {
+            isPlaying = false;
+            document.getElementById('inputField').disabled = true;
+            document.getElementById('word').textContent = "遊戲結束！";
+        }
+
+        function goBack() {
+            window.history.back();
+        }
+    </script>
+    <footer>
+        <p>遊戲由 <a href="#">濰濰的小屋</a> 提供</p>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>射擊小遊戲</title>
+    <style>
+        @font-face {
+            font-family: '華康童童體';
+            src: url('fonts/華康童童體.ttf') format('truetype');
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: '華康童童體', Arial, sans-serif;
+            background-color: #f0f8ff;
+            font-weight: bold; 
+        }
+
+        h2 {
+            font-size: 28px;
+            color: #ff4500;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px #aaa;
+        }
+
+        #infoPanel {
+            position: absolute;
+            left: 10px;
+            top: 20%;
+            font-size: 18px;
+            color: #333;
+            background-color: #e0ffe0;
+            padding: 10px;
+            border: 1px solid #333;
+            border-radius: 5px;
+        }
+
+        #scoreboard {
+            font-size: 24px;
+            color: #ff4500;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        canvas {
+            width: 100%;
+            height: auto;
+            max-width: 400px;
+            max-height: 700px;
+            background-color: #e0ffe0;
+            border: 1px solid #333;
+        }
+
+        footer {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #888;
+        }
+
+        .back-button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4682b4;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.3s ease;
+            font-weight: bold;
+        }
+
+        .back-button:hover {
+            background-color: #ff6347;
+        }
+
+        .game-over {
+            display: none;
+            font-size: 32px;
+            color: red;
+            margin-top: 20px;
+        }
+
+        @media (max-width: 600px) {
+            h2 {
+                font-size: 24px;
+            }
+
+            .back-button {
+                font-size: 14px;
+                padding: 8px 16px;
+            }
+
+            #scoreboard {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h2>射擊小遊戲</h2>
+
+    <div id="infoPanel">
+        <p>子彈數量: <span id="bulletCount">1</span></p>
+        <p>子彈威力: <span id="bulletPower">1</span></p>
+        <p>怪物強度: <span id="monsterStrength">1</span></p>
+    </div>
+
+    <div id="scoreboard">分數: 0</div>
+    <canvas id="gameCanvas"></canvas>
+    <div class="game-over" id="gameOver">遊戲結束！</div>
+
+    <button class="back-button" onclick="goBack()">回到上一頁</button>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreboard = document.getElementById('scoreboard');
+        const bulletCountDisplay = document.getElementById('bulletCount');
+        const bulletPowerDisplay = document.getElementById('bulletPower');
+        const monsterStrengthDisplay = document.getElementById('monsterStrength');
+        const MAX_BULLET_QUANTITY = 5; // 設置子彈數量的上限
+        const MAX_BULLET_POWER = 10; // 設置子彈威力的上限
+
+        let boss = null;
+        let bossAppearanceCount = 0; // BOSS出現次數
+        const BASE_BOSS_HEALTH = 20; // BOSS的基礎生命值
+        const BOSS_SIZE_MULTIPLIER = 5; // BOSS的尺寸為一般怪物的四倍
+        const BOSS_INITIAL_BULLET_COUNT = 2; // BOSS初始發射的子彈數量
+        const MAX_BOSS_BULLET_COUNT = 10; // BOSS子彈數量的上限
+        const BOSS_SPEED = 0.5; // BOSS的移動速度
+        const BOSS_BULLET_SPEED = 5; // BOSS子彈的速度
+
+        let isBossActive = false;
+        const tankImg = new Image();
+        tankImg.src = '插圖/坦克.png';
+        const monsterImg = new Image();
+        monsterImg.src = '插圖/怪物.png';
+        const upgradeImg = new Image();
+        upgradeImg.src = '插圖/升級.png';
+        const bossImg = new Image();
+        bossImg.src = '插圖/BOSS.png';
+
+        let tank = { x: canvas.width / 2 - 25, y: canvas.height - 60, width: 50, height: 50 };
+        let bullets = [];
+        let bossBullets = [];
+        let monsters = [];
+        let upgrades = [];
+        let score = 0;
+        let bulletSpeed = 5;
+        let tankSpeed = 15;
+        let lastBulletTime = 0;
+        let bulletInterval = 300;
+        let monsterStrength = 1; // 怪物的生命值
+        let bulletPower = 1; // 子彈的威力
+        let bulletQuantity = 1; // 每次射擊的子彈數量
+        let isGameOver = false;
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth * 0.9;
+            canvas.height = window.innerHeight * 0.9;
+            if (canvas.width > 400) canvas.width = 400;
+            if (canvas.height > 700) canvas.height = 700;
+    
+            tank.x = canvas.width / 2 - tank.width / 2;
+            tank.y = canvas.height - tank.height - 5; // 坦克距离底部5像素
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function drawTank() {
+            ctx.drawImage(tankImg, tank.x, tank.y, tank.width, tank.height);
+        }
+
+        function drawBullets() {
+            let bulletsToRemove = [];
+            bullets.forEach((bullet, index) => {
+                bullet.y -= bulletSpeed;
+                ctx.fillStyle = 'blue';  
+                ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+                if (bullet.y < 0) {
+                    bulletsToRemove.push(index);
+                }
+            });
+
+            bulletsToRemove.reverse().forEach(index => bullets.splice(index, 1));
+        }
+
+        function drawBoss() {
+            if (boss) {
+                boss.y += BOSS_SPEED;
+                ctx.drawImage(bossImg, boss.x, boss.y, boss.width, boss.height);
+                if (boss.y > canvas.height) {
+                    boss = null;
+                    isBossActive = false;
+                    return; 
+                }
+
+                let bulletsToRemove = [];
+                let bossDefeated = false;
+                bullets.forEach((bullet, bulletIndex) => {
+                    if (boss) {  
+                        if (
+                            bullet.x < boss.x + boss.width &&
+                            bullet.x + bullet.width > boss.x &&
+                            bullet.y < boss.y + boss.height &&
+                            bullet.y + bullet.height > boss.y
+                        ) {
+                            boss.health -= bulletPower;
+                            bulletsToRemove.push(bulletIndex);
+
+                            if (boss.health <= 0 && !bossDefeated) {
+                                bossDefeated = true;
+                                boss = null;
+                                isBossActive = false;
+                                score += 100; 
+                                updateScore();
+                                return; 
+                            }
+                        }
+                    }
+                });
+
+                bulletsToRemove.reverse().forEach(index => bullets.splice(index, 1));
+
+                if (!bossDefeated && Math.random() < 0.02) {
+                    for (let i = 0; i < boss.bulletCount; i++) {
+                        const offsetX = (i - Math.floor(boss.bulletCount / 2)) * 20;
+                        bossBullets.push({
+                            x: boss.x + boss.width / 2 - 5 + offsetX,
+                            y: boss.y + boss.height,
+                            width: 10,
+                            height: 20
+                        });
+                    }
+                }
+            }
+        }
+
+        function drawBossBullets() {
+            let bulletsToRemove = [];
+            bossBullets.forEach((bullet, index) => {
+                bullet.y += BOSS_BULLET_SPEED;
+                ctx.fillStyle = 'red';
+                ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+                if (bullet.y > canvas.height) {
+                    bulletsToRemove.push(index);
+                }
+                if (
+                    bullet.x < tank.x + tank.width &&
+                    bullet.x + bullet.width > tank.x &&
+                    bullet.y < tank.y + tank.height &&
+                    bullet.y + bullet.height > tank.y
+                ) {
+                    endGame();
+                }
+            });
+
+            bulletsToRemove.reverse().forEach(index => bossBullets.splice(index, 1));
+        }
+
+        function drawMonsters() {
+            let monstersToRemove = [];
+            monsters.forEach((monster, index) => {
+                monster.y += 2;
+                ctx.drawImage(monsterImg, monster.x, monster.y, monster.width, monster.height);
+                if (monster.y > canvas.height) {
+                    endGame();
+                }
+
+                bullets.forEach((bullet, bulletIndex) => {
+                    if (
+                        bullet.x < monster.x + monster.width &&
+                        bullet.x + bullet.width > monster.x &&
+                        bullet.y < monster.y + monster.height &&
+                        bullet.y + bullet.height > monster.y
+                    ) {
+                        monster.health -= bulletPower;
+                        bullets.splice(bulletIndex, 1);
+
+                        if (monster.health <= 0) {
+                            monstersToRemove.push(index);
+                            score += 10;
+                            updateScore();
+                        }
+                    }
+                });
+            });
+
+            monstersToRemove.reverse().forEach(index => monsters.splice(index, 1));
+        }
+
+        function drawUpgrades() {
+            let upgradesToRemove = [];
+            upgrades.forEach((upgrade, index) => {
+                upgrade.y += 3;
+                ctx.drawImage(upgradeImg, upgrade.x, upgrade.y, upgrade.width, upgrade.height);
+                if (upgrade.y > canvas.height) {
+                    upgradesToRemove.push(index);
+                }
+
+                if (
+                    upgrade.x < tank.x + tank.width &&
+                    upgrade.x + upgrade.width > tank.x &&
+                    upgrade.y < tank.y + tank.height &&
+                    upgrade.y + upgrade.height > tank.y
+                ) {
+                    upgradesToRemove.push(index);
+                    applyUpgrade(upgrade.type);
+                }
+            });
+
+            upgradesToRemove.reverse().forEach(index => upgrades.splice(index, 1));
+        }
+
+        function spawnMonster() {
+            if (!isGameOver) {
+                const monster = {
+                    x: Math.random() * (canvas.width - 50),
+                    y: -50,
+                    width: 50,
+                    height: 50,
+                    health: monsterStrength
+                };
+                monsters.push(monster);
+            }
+        }
+
+        function spawnUpgrade() {
+            if (!isGameOver && Math.random() < 0.25) {
+                const upgrade = {
+                    x: Math.random() * (canvas.width - 30),
+                    y: -30,
+                    width: 30,
+                    height: 30,
+                    type: Math.random() < 0.5 ? 'power' : 'quantity'
+                };
+                upgrades.push(upgrade);
+            }
+        }
+
+        function spawnBoss() {
+            bossAppearanceCount++;
+            const bossHealth = BASE_BOSS_HEALTH + (bossAppearanceCount - 1) * 50;
+            const bossBulletCount = BOSS_INITIAL_BULLET_COUNT + (bossAppearanceCount - 1);
+
+    // 限制BOSS的子彈數量不超過上限
+    if (bossBulletCount > MAX_BOSS_BULLET_COUNT) {
+        bossBulletCount = MAX_BOSS_BULLET_COUNT;
+    }
+
+            boss = {
+                x: Math.random() * (canvas.width - 200),
+                y: -200,
+                width: 50 * BOSS_SIZE_MULTIPLIER,
+                height: 50 * BOSS_SIZE_MULTIPLIER,
+                health: bossHealth,
+                bulletCount: bossBulletCount
+            };
+            isBossActive = true;
+        }
+
+        function autoShoot(currentTime) {
+            if (currentTime - lastBulletTime > bulletInterval) {
+                const bulletConfigs = [];
+
+                for (let i = 0; i < bulletQuantity; i++) {
+                    const offsetX = (i - Math.floor(bulletQuantity / 2)) * 10;
+                    bulletConfigs.push({ offsetX });
+                }
+
+                bulletConfigs.forEach(config => {
+                    const bullet = {
+                        x: tank.x + tank.width / 2 - 5 + config.offsetX,
+                        y: tank.y,
+                        width: 10,
+                        height: 20
+                    };
+                    bullets.push(bullet);
+                });
+
+                bulletCountDisplay.textContent = bulletQuantity;
+                lastBulletTime = currentTime;
+            }
+        }
+
+        function moveTank() {
+            if (keys['ArrowLeft']) {
+                tank.x -= tankSpeed;
+                if (tank.x < 0) tank.x = 0;
+            }
+            if (keys['ArrowRight']) {
+                tank.x += tankSpeed;
+                if (tank.x + tank.width > canvas.width) tank.x = canvas.width - tank.width;
+            }
+        }
+
+        function applyUpgrade(type) {
+            if (type === 'quantity') {
+                if (bulletQuantity < MAX_BULLET_QUANTITY) {
+                    bulletQuantity += 1;
+                    bulletCountDisplay.textContent = bulletQuantity;
+                }
+            } else if (type === 'power') {
+                if (bulletPower < MAX_BULLET_POWER) {
+                    bulletPower += 1;
+                    bulletPowerDisplay.textContent = bulletPower;
+                }
+            }
+        }
+
+        function gameLoop(timestamp) {
+            if (!isGameOver) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                moveTank();
+
+                drawTank();
+                drawBullets();
+                drawMonsters();
+                drawUpgrades();
+                drawBoss();
+                drawBossBullets();
+
+                autoShoot(timestamp);
+
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        function updateScore() {
+            scoreboard.textContent = `分數: ${score}`;
+            if (score % 200 === 0) {
+                monsterStrength += 2;
+                monsterStrengthDisplay.textContent = monsterStrength;
+            }
+            if (score % 500 === 0 && !isBossActive) {
+                spawnBoss();
+            }
+        }
+
+        function endGame() {
+            isGameOver = true;
+            document.getElementById('gameOver').style.display = 'block';
+        }
+
+        let keys = {};
+
+        document.addEventListener('keydown', (event) => {
+            keys[event.key] = true;
+        });
+
+        document.addEventListener('keyup', (event) => {
+            keys[event.key] = false;
+        });
+
+        setInterval(spawnMonster, 1000);
+        setInterval(spawnUpgrade, 5000);
+        gameLoop(0);
+
+        function goBack() {
+            window.history.back();
+        }
+    </script>
+
+    <footer>
+        <p>遊戲由 <a href="#">濰濰的小屋</a> 提供</p>
+    </footer>
+</body>
+</html>

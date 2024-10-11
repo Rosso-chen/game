@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>猜數字</title>
+    <style>
+        @font-face {
+            font-family: '華康童童體'; /* 字體名稱 */
+            src: url('fonts/華康童童體.ttf') format('truetype'); /* 字體檔案路徑 */
+        }
+        body {
+            font-family: '華康童童體', Arial, sans-serif;
+            font-weight: bold; /* 設置全局字體加粗 */
+            background-color: #f0f8ff;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        h2 {
+            font-size: 28px;
+            color: #ff4500;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px #aaa;
+        }
+
+        input[type="number"] {
+            padding: 10px;
+            font-size: 18px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 18px;
+            background-color: #4682b4;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-family: '華康童童體', Arial, sans-serif; /* 設置按鈕字體 */
+            font-weight: bold; /* 設置按鈕字體加粗 */
+        }
+
+        button:hover {
+            background-color: #ff6347;
+        }
+
+        .result {
+            margin-top: 20px;
+            font-size: 20px;
+            color: #ff4500;
+        }
+
+        footer {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #888;
+        }
+
+        footer a {
+            color: #4682b4;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        .back-button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4682b4;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.3s ease;
+            font-family: '華康童童體', Arial, sans-serif; /* 設置按鈕字體 */
+            font-weight: bold; /* 設置按鈕字體加粗 */
+        }
+
+        .back-button:hover {
+            background-color: #ff6347;
+        }
+    </style>
+</head>
+<body>
+    <h2>猜數字</h2>
+    <p>猜一個1到100之間的數字：</p>
+    <input type="number" id="guessInput" min="1" max="100" placeholder="輸入數字">
+    <button onclick="checkGuess()">提交</button>
+
+    <div class="result" id="result"></div>
+
+    <!-- 回到上一頁按鈕 -->
+    <button class="back-button" onclick="goBack()">回到上一頁</button>
+
+    <script>
+        const randomNumber = Math.floor(Math.random() * 100) + 1;
+        let attempts = 0;
+
+        function checkGuess() {
+            const guess = parseInt(document.getElementById('guessInput').value);
+            const result = document.getElementById('result');
+            attempts++;
+
+            if (isNaN(guess)) {
+                result.textContent = '請輸入一個有效的數字！';
+            } else if (guess > randomNumber) {
+                result.textContent = '太大了！';
+            } else if (guess < randomNumber) {
+                result.textContent = '太小了！';
+            } else {
+                result.textContent = `恭喜你！你在 ${attempts} 次嘗試中猜對了！`;
+            }
+        }
+
+        function goBack() {
+            window.history.back();
+        }
+    </script>
+
+    <footer>
+        <p>遊戲由 <a href="#">濰濰的小屋</a> 提供</p>
+    </footer>
+</body>
+</html>

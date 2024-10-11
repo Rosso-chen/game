@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>貪吃蛇遊戲</title>
+    <style>
+        @font-face {
+            font-family: '華康童童體'; /* 字體名稱 */
+            src: url('fonts/華康童童體.ttf') format('truetype'); /* 字體檔案路徑 */
+        }
+        body {
+            font-family: '華康童童體', Arial, sans-serif; /* 設置全局字體 */
+            background-color: #f0f8ff;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            padding: 10px 50px;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            text-align: center;
+            color: #ff4500;
+            text-shadow: 2px 2px 4px #aaa;
+            margin: 0;
+            flex-grow: 1;
+        }
+
+        .button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4682b4;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.3s ease;
+            font-weight: bold; /* 使按鈕字體加粗 */
+            font-family: '華康童童體', sans-serif; /* 可選，設定字體 */
+        }
+
+        .button:hover {
+            background-color: #ff6347;
+        }
+
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            flex-grow: 1;
+            margin-bottom: 20px;
+        }
+
+        canvas {
+            background-color: #000;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            border: 2px solid #32CD32;
+            margin-bottom: 20px;
+        }
+
+        .scoreboard {
+            position: absolute;
+            top: 50%;
+            left: -150px;
+            transform: translateY(-50%);
+            font-size: 24px;
+            color: #ff4500;
+            font-weight: bold;
+        }
+
+        .info-panel {
+            margin: 32px;
+            font-size: 24px;
+            color: #333;
+            background-color: #f8f8f8;
+            padding: 30px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            max-width: 300px;
+            position: absolute;
+            right: 20px;
+            top: 100px; /* 调整这个值将面板向下移动 */
+            font-weight: bold;
+        }
+
+        .info-panel h2 {
+            color: #ff4500;
+            text-shadow: 1px 1px 2px #aaa;
+            margin-top: 0;
+        }
+
+        footer {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #888;
+            text-align: center;
+            width: 100%;
+            padding: 10px 0;
+            background-color: #f0f8ff;
+        }
+
+        footer a {
+            color: #4682b4;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        .footer-buttons {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            padding-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <button class="button" onclick="pauseGame()">暫停/繼續</button>
+        <h1>貪吃蛇遊戲</h1>
+        <button class="button" onclick="restartGame()">重新開始</button>
+    </div>
+    <div class="game-container">
+        <div class="scoreboard">得分: <span id="score">0</span></div>
+        <canvas id="gameCanvas" width="600" height="600"></canvas>
+    </div>
+    <div class="footer-buttons">
+        <button class="button" onclick="goBack()">回到上一頁</button>
+    </div>
+    <footer>
+        <p>遊戲由 <a href="#">濰濰的小屋</a> 提供</p>
+    </footer>
+    <div class="info-panel">
+        <h2>遊戲操作說明</h2>
+        <p><strong>蛇的控制：</strong></p>
+        <ul>
+            <li>使用方向鍵控制蛇的移動。</li>
+        </ul>
+        <p><strong>快速鍵：</strong></p>
+        <ul>
+            <li><strong>P鍵</strong> - 暫停/繼續遊戲</li>
+            <li><strong>R鍵</strong> - 重新開始遊戲</li>
+        </ul>
+        <p><strong>元素說明：</strong></p>
+        <ul>
+            <li><strong>蛇：</strong> 綠色的長條，玩家控制它在屏幕上移動。</li>
+            <li><strong>食物：</strong> 圓形黃色物體，蛇吃掉它會變長。</li>
+            <li><strong>障礙物：</strong> 棕色方塊，碰撞後遊戲結束。</li>
+        </ul>
+    </div>
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        const box = 20; // 每一格的大小
+        let snake = [
+            { x: 9 * box, y: 9 * box },
+            { x: 8 * box, y: 9 * box },
+            { x: 7 * box, y: 9 * box }
+        ]; // 初始蛇的长度为3格
+        let direction = "RIGHT"; // 蛇的初始方向
+        let food = { x: Math.floor(Math.random() * 29 + 1) * box, y: Math.floor(Math.random() * 29 + 1) * box }; // 食物初始位置
+        let score = 0;
+        let speed = 200; // 初始速度
+        let obstacles = generateObstacles(); // 生成障碍物
+        let isPaused = false;
+
+        document.addEventListener("keydown", directionControl);
+        document.addEventListener("keydown", keyShortcuts);
+
+        function generateObstacles() {
+            let obstacles = [];
+            for (let i = 0; i < 1; i++) { // 障碍物数量
+                obstacles.push({
+                    x: Math.floor(Math.random() * 28 + 1) * box,
+                    y: Math.floor(Math.random() * 28 + 1) * box
+                });
+            }
+            return obstacles;
+        }
+
+        function directionControl(event) {
+            if ([37, 38, 39, 40].includes(event.keyCode)) {
+                event.preventDefault(); // 阻止方向键的默认行为（滚动页面）
+            }
+            if (event.keyCode == 37 && direction != "RIGHT") {
+                direction = "LEFT";
+            } else if (event.keyCode == 38 && direction != "DOWN") {
+                direction = "UP";
+            } else if (event.keyCode == 39 && direction != "LEFT") {
+                direction = "RIGHT";
+            } else if (event.keyCode == 40 && direction != "UP") {
+                direction = "DOWN";
+            }
+        }
+
+        function keyShortcuts(event) {
+            if (event.key === "p" || event.key === "P") {
+                pauseGame();
+            } else if (event.key === "r" || event.key === "R") {
+                restartGame();
+            }
+        }
+
+        let maxObstacles = 15; // 設置障礙物的最大數量
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 畫蛇
+            for (let i = 0; i < snake.length; i++) {
+                ctx.fillStyle = i === 0 ? "green" : "lime";
+                ctx.fillRect(snake[i].x, snake[i].y, box, box);
+                ctx.strokeStyle = "darkgreen";
+                ctx.strokeRect(snake[i].x, snake[i].y, box, box);
+            }
+
+            // 畫食物
+            ctx.fillStyle = "yellow";
+            ctx.beginPath();
+            ctx.arc(food.x + box / 2, food.y + box / 2, box / 2, 0, 2 * Math.PI);
+            ctx.fill();
+
+            // 畫障碍物
+            for (let i = 0; i < obstacles.length; i++) {
+                ctx.fillStyle = "brown";
+                ctx.fillRect(obstacles[i].x, obstacles[i].y, box * 2, box * 2); // 改为 2*2
+            }
+
+            // 蛇的移動
+            let snakeX = snake[0].x;
+            let snakeY = snake[0].y;
+
+            if (direction == "LEFT") snakeX -= box;
+            if (direction == "UP") snakeY -= box;
+            if (direction == "RIGHT") snakeX += box;
+            if (direction == "DOWN") snakeY += box;
+
+            // 如果蛇吃到了食物
+            if (snakeX == food.x && snakeY == food.y) {
+                score++;
+                document.getElementById('score').textContent = score;
+                food = {
+                    x: Math.floor(Math.random() * 29 + 1) * box,
+                    y: Math.floor(Math.random() * 29 + 1) * box
+                };
+
+                // 每得 3 分，增加障碍物并加速
+                if (score % 3 === 0 && obstacles.length < maxObstacles) {
+                    speed -= 20;
+                    clearInterval(game);
+                    game = setInterval(draw, speed);
+                    obstacles.push({
+                        x: Math.floor(Math.random() * 28 + 1) * box,
+                        y: Math.floor(Math.random() * 28 + 1) * box
+                    });
+                }
+            } else {
+                snake.pop(); // 移除蛇尾
+            }
+
+            let newHead = { x: snakeX, y: snakeY };
+
+            // 碰撞检测
+            if (snakeX < 0 || snakeY < 0 || snakeX >= canvas.width || snakeY >= canvas.height || collision(newHead, snake) || collision(newHead, obstacles)) {
+                clearInterval(game);
+                alert("遊戲結束！得分：" + score);
+                return;
+            }
+
+            snake.unshift(newHead);
+        }
+
+        function collision(head, body) {
+            for (let i = 0; i < body.length; i++) {
+                if (head.x == body[i].x && head.y == body[i].y) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function restartGame() {
+            snake = [
+                { x: 9 * box, y: 9 * box },
+                { x: 8 * box, y: 9 * box },
+                { x: 7 * box, y: 9 * box }
+            ];
+            direction = "RIGHT";
+            food = { x: Math.floor(Math.random() * 29 + 1) * box, y: Math.floor(Math.random() * 29 + 1) * box };
+            score = 0;
+            obstacles = generateObstacles();
+            speed = 200;
+            clearInterval(game);
+            game = setInterval(draw, speed);
+            document.getElementById('score').textContent = score;
+        }
+
+        function pauseGame() {
+            if (isPaused) {
+                game = setInterval(draw, speed); // 恢复游戏
+            } else {
+                clearInterval(game); // 暂停游戏
+            }
+            isPaused = !isPaused;
+        }
+
+        function goBack() {
+            window.history.back();
+        }
+
+        let game = setInterval(draw, speed);
+    </script>
+</body>
+</html>
+
+           

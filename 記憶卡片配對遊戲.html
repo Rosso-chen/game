@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>記憶卡片配對遊戲</title>
+    <style>
+        @font-face {
+            font-family: '華康童童體'; /* 字體名稱 */
+            src: url('fonts/華康童童體.ttf') format('truetype'); /* 字體檔案路徑 */
+        }
+        body {
+            font-family: '華康童童體', Arial, sans-serif; /* 設置全局字體 */
+            background-color: #f0f8ff; /* 設置背景色 */
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            font-weight: bold; /* 全局字體加粗 */
+        }
+
+        h2 {
+            font-size: 28px;
+            color: #ff4500; /* 設置標題顏色 */
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px #aaa; /* 增加陰影效果 */
+        }
+
+        #timer {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        #matchedPairsDisplay {
+            font-size: 20px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        label, select, button {
+            margin: 10px;
+            font-size: 18px;
+            padding: 5px;
+        }
+
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr); /* 每行顯示10張卡片 */
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .card-wrapper {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .card {
+            width: 60px;
+            height: 80px;
+            background-color: #4682b4;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+            cursor: pointer;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .card.matched {
+            background-color: #32cd32;
+            cursor: default;
+        }
+
+        .coordinate {
+            font-size: 12px;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        footer {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #888;
+        }
+
+        footer a {
+            color: #4682b4;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4682b4;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-family: '華康童童體', Arial, sans-serif;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background-color: #ff6347;
+        }
+
+        /* 回到上一頁按鈕的樣式 */
+        .back-button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4682b4;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* 增加按鈎影效果 */
+            transition: background-color 0.3s ease;
+            font-weight: bold; /* 使按鈎字體加粗 */
+            font-family: '華康童童體', sans-serif; /* 可選，設定字體 */
+        }
+        .back-button:hover {
+            background-color: #ff6347; /* 改變懸停時的背景色 */
+        }
+    </style>
+</head>
+<body>
+    <h2>記憶卡片配對遊戲</h2>
+    <p id="timer">00:00:00</p> <!-- 計時器顯示 -->
+    <p id="matchedPairsDisplay">已完成配對：0 組</p> <!-- 已完成配對顯示器 -->
+    <label for="difficulty">選擇難度：</label>
+    <select id="difficulty">
+        <option value="easy">容易</option>
+        <option value="normal">普通</option>
+        <option value="hard">困難</option>
+        <option value="nightmare">惡夢</option>
+    </select>
+    <button id="startGame">開始遊戲</button>
+
+    <div id="gameBoard" class="game-board"></div>
+
+    <!-- 回到上一頁按鈕 -->
+    <button class="back-button" onclick="goBack()">回到上一頁</button>
+
+    <footer>
+        <p>遊戲由 <a href="#">濰濰的小屋</a> 提供</p>
+    </footer>
+
+    <script>
+        // 全局變量宣告
+        let cards = [];
+        let firstCard = null;
+        let secondCard = null;
+        let matchedPairs = 0; // 當前已配對的卡片組數
+        let shuffleCounter = 0; // 記錄已觸發洗牌的次數
+        let timer;
+        let isFlipping = false; // 防止同時翻多張卡片
+        let startTime;
+        let timerInterval;
+        let totalPairs = 0;
+
+        document.getElementById('startGame').addEventListener('click', startGame);
+
+        function startGame() {
+            clearTimeout(timer); // 清除惡夢模式的重新洗牌計時
+            clearInterval(timerInterval); // 清除之前的計時器
+            resetTimer(); // 重置計時器顯示
+            matchedPairs = 0; // 重置配對計數
+            document.getElementById('matchedPairsDisplay').textContent = `已完成配對：0 組`;
+            shuffleCounter = 0; // 重置洗牌計數
+            firstCard = null;
+            secondCard = null;
+            isFlipping = false;
+            startTime = null; // 重置開始時間
+            const difficulty = document.getElementById('difficulty').value;
+            totalPairs = difficulties[difficulty];
+            createCards(totalPairs);
+            shuffleCards();
+            displayCards();
+        }
+
+        const difficulties = {
+            easy: 10,
+            normal: 30,
+            hard: 50,
+            nightmare: 100
+        };
+
+        function createCards(pairCount) { 
+            cards = [];
+            for (let i = 1; i <= pairCount; i++) {
+                cards.push(i, i);
+            }
+        }
+
+        function shuffleCards() {
+            cards.sort(() => Math.random() - 0.5);
+        }
+
+        function displayCards() {
+            const gameBoard = document.getElementById('gameBoard');
+            gameBoard.innerHTML = '';
+            const columns = 10; // 每行顯示10張卡片
+
+            cards.forEach((value, index) => {
+                const cardWrapper = document.createElement('div');
+                cardWrapper.classList.add('card-wrapper');
+
+                const coordinate = document.createElement('div');
+                const x = index % columns + 1;
+                const y = Math.floor(index / columns) + 1;
+                coordinate.textContent = `(${x}, ${y})`;
+                coordinate.classList.add('coordinate');
+
+                const card = document.createElement('div');
+                card.classList.add('card');
+                card.dataset.value = value;
+                card.dataset.index = index;
+                card.addEventListener('click', flipCard);
+                card.textContent = ''; // 初始化時隱藏卡片的值
+
+                cardWrapper.appendChild(coordinate);
+                cardWrapper.appendChild(card);
+                gameBoard.appendChild(cardWrapper);
+            });
+        }
+
+        function flipCard(event) {
+            if (isFlipping) return;
+            const clickedCard = event.target;
+            if (clickedCard.classList.contains('matched') || clickedCard === firstCard) {
+                return;
+            }
+
+            if (!startTime) {
+                startTime = Date.now();
+                startTimer();
+            }
+
+            const emojis = [
+                '😀', '😂', '😎', '💡', '🌟', '🍀', '🐱', '🚀', '🍕', '🎉',
+                '😃', '😄', '😅', '😆', '😉', '😊', '😋', '😍', '😘', '😗',
+                '😙', '😚', '😜', '😝', '😛', '😺', '😸', '😹', '😻', '😼',
+                '😽', '🙀', '😿', '😾', '👶', '👦', '👧', '👨', '👩', '👴',
+                '👵', '👮', '👷', '💂', '👼', '🎅', '👻', '👽', '👾', '💩',
+                '😈', '👿', '👹', '👺', '💀', '☠', '👰', '👸', '👳', '🎓',
+                '👑', '👒', '👓', '🎩', '👠', '👡', '👢', '👞', '👟', '🐶',
+                '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁',
+                '🐮', '🐷', '🐽', '🐸', '🐵', '🙈', '🙉', '🙊', '🐒', '🐔',
+                '🐧', '🐦', '🐤', '🐣', '🐥', '🦆', '🦅', '🦉', '🦇', '🐺'
+            ];
+            clickedCard.textContent = emojis[clickedCard.dataset.value % emojis.length];
+            
+            if (!firstCard) {
+                firstCard = clickedCard;
+            } else if (!secondCard) {
+                secondCard = clickedCard;
+                isFlipping = true;
+                checkForMatch();
+            }
+        }
+
+        function checkForMatch() {
+            if (firstCard.dataset.value === secondCard.dataset.value) {
+                firstCard.classList.add('matched');
+                secondCard.classList.add('matched');
+                matchedPairs++;
+                document.getElementById('matchedPairsDisplay').textContent = `已完成配對：${matchedPairs} 組`;
+                resetCards();
+                
+                if (matchedPairs === totalPairs) {
+                    clearInterval(timerInterval); // 配對完成後停止計時
+                    alert('恭喜！你完成了所有配對！');
+                } else if (matchedPairs % 10 === 0 && matchedPairs / 10 > shuffleCounter) {
+                    // 每成功配對10組後進行洗牌，且只洗牌一次
+                    shuffleCounter++;
+                    reshuffleUnmatched();
+                }
+                
+                isFlipping = false; // 匹配完成，允许翻开新卡片
+            } else {
+                setTimeout(() => {
+                    firstCard.textContent = '';
+                    secondCard.textContent = '';
+                    resetCards();
+                    isFlipping = false; // 匹配失敗後允許翻開新卡片
+                }, 1000);
+            }
+        }
+
+        function resetCards() {
+            firstCard = null;
+            secondCard = null;
+        }
+
+        function reshuffleUnmatched() {
+            const unmatchedCards = Array.from(document.querySelectorAll('.card:not(.matched)'));
+            const unmatchedValues = unmatchedCards.map(card => card.dataset.value);
+            shuffleArray(unmatchedValues);
+            unmatchedCards.forEach((card, index) => {
+                card.textContent = '';
+                card.dataset.value = unmatchedValues[index];
+            });
+            alert('卡片重新洗牌！'); // 提示玩家卡片已重新洗牌
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                const elapsedTime = Date.now() - startTime;
+                document.getElementById('timer').textContent = formatTime(elapsedTime);
+            }, 1000);
+        }
+
+        function resetTimer() {
+            document.getElementById('timer').textContent = '00:00:00';
+        }
+
+        function formatTime(ms) {
+            const totalSeconds = Math.floor(ms / 1000);
+            const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+            const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+            const seconds = String(totalSeconds % 60).padStart(2, '0');
+            return `${hours}:${minutes}:${seconds}`;
+        }
+
+        // 回到上一頁的函數
+        function goBack() {
+            window.history.back();
+        }
+    </script>
+</body>
+</html>

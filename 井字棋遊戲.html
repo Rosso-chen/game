@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>井字棋遊戲 - 玩家 VS 電腦</title>
+    <style>
+        @font-face {
+            font-family: '華康童童體'; /* 字體名稱 */
+            src: url('fonts/華康童童體.ttf') format('truetype'); /* 字體檔案路徑 */
+        }
+        body {
+            font-family: '華康童童體', Arial, sans-serif; /* 設置全局字體 */
+            background-color: #f0f8ff; /* 設置背景色 */
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        h2 {
+            font-size: 28px;
+            color: #ff4500; /* 設置標題顏色 */
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px #aaa; /* 增加陰影效果 */
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-template-rows: repeat(3, 100px);
+            gap: 10px;
+            background-color: #4682b4;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3); /* 增加盒陰影效果 */
+        }
+
+        .cell {
+            width: 100px;
+            height: 100px;
+            background-color: #f9f9c5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 48px; /* 放大字體 */
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 10px;
+            box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.1); /* 增加內部陰影效果 */
+            transition: background-color 0.3s ease, transform 0.2s ease; /* 添加過渡效果 */
+        }
+
+        /* O的顏色 */
+        .cell.o {
+            color: #32CD32; /* 設置O的顏色為綠色 */
+        }
+
+        /* X的顏色 */
+        .cell.x {
+            color: #FF4500; /* 設置X的顏色為紅色 */
+        }
+
+        .cell:hover {
+            background-color: #ffefd5; /* 鼠標懸停時的背景顏色 */
+            transform: scale(1.1); /* 鼠標懸停時的縮放效果 */
+        }
+
+        footer {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #888;
+        }
+
+        footer a {
+            color: #4682b4;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* 回到上一頁按鈕的樣式 */
+        .back-button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4682b4;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* 增加按鈕陰影效果 */
+            transition: background-color 0.3s ease;
+            font-weight: bold; /* 使按鈕字體加粗 */
+            font-family: '華康童童體', sans-serif; /* 可選，設定字體 */
+        }
+
+        .back-button:hover {
+            background-color: #ff6347; /* 改變懸停時的背景色 */
+        }
+    </style>
+</head>
+<body>
+    <h2>井字棋遊戲 - 玩家 (O) VS 電腦 (X)</h2>
+    <div class="grid">
+        <div class="cell" data-index="0"></div>
+        <div class="cell" data-index="1"></div>
+        <div class="cell" data-index="2"></div>
+        <div class="cell" data-index="3"></div>
+        <div class="cell" data-index="4"></div>
+        <div class="cell" data-index="5"></div>
+        <div class="cell" data-index="6"></div>
+        <div class="cell" data-index="7"></div>
+        <div class="cell" data-index="8"></div>
+    </div>
+
+    <!-- 回到上一頁按鈕 -->
+    <button class="back-button" onclick="goBack()">回到上一頁</button>
+
+    <script>
+        let turn = 'O';  // 玩家先手使用 O
+        const cells = document.querySelectorAll('.cell');
+        const winPatterns = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8],
+            [0, 3, 6], [1, 4, 7], [2, 5, 8],
+            [0, 4, 8], [2, 4, 6]
+        ];
+
+        cells.forEach(cell => {
+            cell.addEventListener('click', () => {
+                if (cell.textContent === '' && turn === 'O') {
+                    cell.textContent = 'O';
+                    cell.classList.add('o');
+                    if (checkWin('O')) {
+                        showWin('O');
+                    } else if (isDraw()) {
+                        alert('平局!');
+                        resetGame();
+                    } else {
+                        turn = 'X';
+                        setTimeout(computerMove, 500); // 給玩家一點時間看清楚
+                    }
+                }
+            });
+        });
+
+        function computerMove() {
+            let move = findBestMove('X');
+            if (move === null) {
+                move = findBestMove('O');
+            }
+            if (move === null) {
+                let availableCells = [];
+                cells.forEach(cell => {
+                    if (cell.textContent === '') {
+                        availableCells.push(cell);
+                    }
+                });
+                move = availableCells[Math.floor(Math.random() * availableCells.length)];
+            }
+
+            if (move) {
+                move.textContent = 'X';
+                move.classList.add('x');
+                if (checkWin('X')) {
+                    showWin('X');
+                } else if (isDraw()) {
+                    alert('平局!');
+                    resetGame();
+                } else {
+                    turn = 'O';
+                }
+            }
+        }
+
+        function findBestMove(player) {
+            for (let i = 0; i < winPatterns.length; i++) {
+                const [a, b, c] = winPatterns[i];
+                const values = [cells[a].textContent, cells[b].textContent, cells[c].textContent];
+                const countPlayer = values.filter(val => val === player).length;
+                const countEmpty = values.filter(val => val === '').length;
+
+                if (countPlayer === 2 && countEmpty === 1) {
+                    const emptyIndex = [a, b, c].find(index => cells[index].textContent === '');
+                    return cells[emptyIndex];
+                }
+            }
+            return null;
+        }
+
+        function checkWin(player) {
+            return winPatterns.some(pattern => {
+                return pattern.every(index => {
+                    return cells[index].textContent === player;
+                });
+            });
+        }
+
+        function showWin(player) {
+            setTimeout(() => {
+                alert(`${player} 贏了!`);
+                resetGame();
+            }, 100);  // 短暫延遲以顯示最後一步
+        }
+
+        function isDraw() {
+            return [...cells].every(cell => cell.textContent !== '');
+        }
+
+        function resetGame() {
+            cells.forEach(cell => {
+                cell.textContent = '';
+                cell.classList.remove('o', 'x');
+            });
+            turn = 'O';  // 重置為玩家先手
+        }
+
+        // 回到上一頁的函數
+        function goBack() {
+            window.history.back();
+        }
+    </script>
+    <footer>
+        <p>遊戲由 <a href="#">濰濰的小屋</a> 提供</p>
+    </footer>
+</body>
+</html>
